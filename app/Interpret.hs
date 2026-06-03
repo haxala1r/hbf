@@ -1,0 +1,112 @@
+module Interpret where
+import Data.Word
+import Data.Char
+import Control.Monad
+
+
+-- This is the parsed program, thus all loops must
+-- be matched correctly
+data Instr =
+  NextData
+  | PrevData
+  | Inc
+  | Dec
+  | Output
+  | Input
+  | Loop [Instr]
+  deriving Show
+
+parseSingle :: Char -> Maybe Instr
+parseSingle = f
+  where
+    f '>' = Just NextData
+    f '<' = Just PrevData
+    f '+' = Just Inc
+    f '-' = Just Dec
+    f '.' = Just Output
+    f ',' = Just Input
+    f _ = Nothing
+
+parseClose :: String -> Maybe ([Instr], String)
+parseClose [] = Nothing
+parseClose (']' : rest) = Just ([], rest)
+parseClose ('[' : rest) = do
+  (is, rest') <- parseClose rest
+  (is', rest'') <- parseClose rest'
+  return (Loop is : is', rest'')
+parseClose (c : rest) = do
+  i <- parseSingle c
+  (is, rest') <- parseClose rest
+  return (i : is, rest')
+
+parse :: String -> Maybe [Instr]
+parse [] = Just []
+parse ('[' : rest) = do
+  (is, s) <- parseClose rest
+  is' <- parse s
+  return (Loop is : is')
+parse (c : rest) = do
+  i <- parseSingle c
+  is <- parse rest
+  return (i : is)
+
+
+-- we now have a parsed representation of the entire
+-- program, so we can simply loop over this list and
+-- interpret it
+
+-- This is the memory, the tape.
+-- we represent it as a zipper in memory.
+-- Left list, current cell, right list.
+-- Note that this structure makes all operations
+-- O(1) despite being functionally pure and lazy.
+data Tape = Tape [Word8] Word8 [Word8]
+
+-- empty tape has an infinite number of zero cells
+-- to the right.
+-- note that the zeroes will only be materialized on demand.
+newTape :: Tape
+newTape = Tape [] 0 (repeat 0)
+
+
+executeOne :: Instr -> Tape -> IO Tape
+-- This CANNOT happen
+executeOne _ (Tape _ _ []) = error "empty right tape"
+
+executeOne NextData (Tape ls c (r : rs)) =
+  return $ Tape (c : ls) r rs
+executeOne PrevData t = f t
+  where
+    f (Tape [] c rs) = return $ Tape [] c rs
+    f (Tape (l : ls) c rs) = return $ Tape ls l (c : rs)
+executeOne Inc (Tape ls c rs) = return $ Tape ls (c + 1) rs
+executeOne Dec (Tape ls c rs) = return $ Tape ls (c - 1) rs
+executeOne Output (Tape ls c rs) = do
+  putChar $ chr $ fromEnum c
+  return $ Tape ls c rs
+executeOne Input (Tape ls _ rs) = do
+  c <- getChar
+  return $ Tape ls (toEnum $ ord c) rs
+
+-- just like when parsing, the loops are the only
+-- tricky part, but they're not hard
+executeOne (Loop is) (Tape ls c rs) =
+  if c == 0 then
+    return $ Tape ls c rs -- if zero, just skip
+  else
+    -- if non-zero, execute the entire body, then
+    -- keep executing forever until you see zero.
+    do
+      t <- executeAll is (Tape ls c rs)
+      executeOne (Loop is) t
+
+executeAll :: [Instr] -> Tape -> IO Tape
+executeAll is t =
+  foldM (\t' i -> executeOne i t') t is  
+
+
+-- test
+helloWorld :: [Instr]
+helloWorld = case parse "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++." of
+  Nothing -> error "cant parse"
+  Just i -> i
