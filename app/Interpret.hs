@@ -3,7 +3,6 @@ import Data.Word
 import Data.Char
 import Control.Monad
 
-
 -- This is the parsed program, thus all loops must
 -- be matched correctly
 data Instr =
