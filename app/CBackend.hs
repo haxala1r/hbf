@@ -66,7 +66,8 @@ emitOne Inc = [CStmt "(*curr)++"]
 emitOne Dec = [CStmt "(*curr)--"]
 emitOne Output = [CStmt "putchar((char)*curr)"
                  ,CStmt "fflush(stdout)"]
-emitOne Input = [CStmt "*curr = getchar()"]
+emitOne Input = [CStmt "buf = getchar()"
+                ,CStmt "*curr = (buf < 0) ? *curr : buf"]
 emitOne (Loop is) =
   [CWhile "*curr != 0" (concatMap emitOne is)]
 
@@ -84,6 +85,7 @@ emitC is = CAst [CInclude "<stdio.h>"
                 ,CGlobal "uint8_t*" "curr"
                 ,CGlobal "uint8_t*" "right"
                 ,CGlobal "uint64_t" "size"
+                ,CGlobal "int" "buf"
                 ,CFunc "int" "main" body]
   where
     body = [CStmt "size = 300000"

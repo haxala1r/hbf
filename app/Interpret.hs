@@ -3,6 +3,7 @@ import Data.Word
 import Data.Char
 import Control.Monad
 import BF
+import System.IO
 
 -- This is the memory, the tape.
 -- we represent it as a zipper in memory.
@@ -40,9 +41,13 @@ executeOne _ Dec (Tape ls c rs) = return $ Tape ls (c - 1) rs
 executeOne pc Output (Tape ls c rs) = do
   pc $ chr $ fromEnum c
   return $ Tape ls c rs
-executeOne _ Input (Tape ls _ rs) = do
-  c <- getChar
-  return $ Tape ls (toEnum $ ord c) rs
+executeOne _ Input (Tape ls c rs) = do
+  done <- isEOF
+  if done
+    then return (Tape ls c rs)
+    else do
+    c' <- getChar
+    return $ Tape ls (toEnum $ ord c') rs
 
 -- just like when parsing, the loops are the only
 -- tricky part, but they're not hard
