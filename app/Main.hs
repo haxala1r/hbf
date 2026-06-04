@@ -1,14 +1,18 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
+import BF
 import Interpret
 import System.IO
+import CBackend
 
-exec :: String -> IO ()
-exec s = case parse s of
-  Nothing -> putStrLn "Cannot parse! probably a mismatched ]"
-  Just is -> (do
-    _ <- executeAll is newTape
-    return ())
 
+exec :: [Instr] -> IO ()
+exec is = do
+  _ <- executeAll is newTape
+  return ()
+
+cleanStr :: String -> String
+cleanStr = filter (\x -> x /= ' ' && x /= '\t' && x /= '\n')
 
 getAll :: IO String
 getAll = aux []
@@ -16,13 +20,17 @@ getAll = aux []
     aux acc = do
       done <- isEOF
       if done
-      then return acc
+      then return $ cleanStr acc
       else do
         l <- getLine
         aux (acc ++ l)
-        
+
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
   input <- getAll
-  exec input
+  case parse input of
+    Just is -> 
+      print $ emitC is
+    Nothing ->
+      putStrLn "parse error (possibly an unmatched ])"

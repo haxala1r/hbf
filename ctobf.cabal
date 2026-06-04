@@ -62,13 +62,14 @@ executable ctobf
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    other-modules: Interpret
+    other-modules: Interpret BF CBackend
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.20.2.0
+    build-depends:    base ^>=4.20.2.0,
+                      text >= 2.1.3
 
     -- Directories containing source files.
     hs-source-dirs:   app
