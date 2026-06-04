@@ -2,6 +2,24 @@
 
 This is a brainfuck interpreter written in haskell.
 
-You can run it with `cabal run`, you'll need cabal and ghc installed. The program will read from stdin, and start interpreting the program once it sees EOF.
+### Getting Started
 
-You can run the test program like this: `cat goldenratio.b | cabal run`. This should print out the digits of the golden ratio.
+You'll need ghc and cabal installed on your system.
+
+To interpret brainfuck code directly:
+
+```
+cat goldenratio.b | cabal run -- ctobf
+```
+
+To compile brainfuck code to C:
+
+```
+cat goldenratio.b | cabal run -- ctobf -c
+```
+
+To save it to a file instead of printing to standard output:
+
+```
+cat goldenratio.b | cabal run -- ctobf -c -o out.c
+```
