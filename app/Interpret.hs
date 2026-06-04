@@ -59,25 +59,31 @@ parse (c : rest) = do
 -- Left list, current cell, right list.
 -- Note that this structure makes all operations
 -- O(1) despite being functionally pure and lazy.
-data Tape = Tape [Word8] Word8 [Word8]
+--
+-- Note: We use a custom InfiniteList type here.
+-- this allows the compiler to verify that the
+-- right tape will never be empty, thus we
+-- don't need to check for it in executeOne.
+data InfiniteList a = Cons a (InfiniteList a)
+data Tape = Tape [Word8] Word8 (InfiniteList Word8)
 
 -- empty tape has an infinite number of zero cells
 -- to the right.
 -- note that the zeroes will only be materialized on demand.
+infRepeat :: a -> InfiniteList a
+infRepeat x = Cons x (infRepeat x)
 newTape :: Tape
-newTape = Tape [] 0 (repeat 0)
+newTape = Tape [] 0 (infRepeat 0)
 
 
 executeOne :: Instr -> Tape -> IO Tape
--- This CANNOT happen
-executeOne _ (Tape _ _ []) = error "empty right tape"
 
-executeOne NextData (Tape ls c (r : rs)) =
+executeOne NextData (Tape ls c (Cons r rs)) =
   return $ Tape (c : ls) r rs
 executeOne PrevData t = f t
   where
     f (Tape [] c rs) = return $ Tape [] c rs
-    f (Tape (l : ls) c rs) = return $ Tape ls l (c : rs)
+    f (Tape (l : ls) c rs) = return $ Tape ls l (Cons c rs)
 executeOne Inc (Tape ls c rs) = return $ Tape ls (c + 1) rs
 executeOne Dec (Tape ls c rs) = return $ Tape ls (c - 1) rs
 executeOne Output (Tape ls c rs) = do
