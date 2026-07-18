@@ -5,7 +5,7 @@ import Interpret
 import System.IO
 import CBackend
 import Options.Applicative
-
+import CParse (cparse)
 
 exec :: (Char -> IO ()) -> [Instr] -> IO ()
 exec f is = do
@@ -31,7 +31,7 @@ data CmdOpts = CmdOpts { compile :: Bool, outFile :: String }
 
 parser :: Parser CmdOpts
 parser = CmdOpts
-  <$> switch (long "compiler"
+  <$> switch (long "compile"
              <> short 'c'
              <> help "whether to compile to C code instead of interpreting")
   <*> strOption (long "output"
@@ -63,6 +63,8 @@ doMain opts = do
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
+  print $ cparse "int x = 5;"
+  print $ cparse "int y = 1 * 2 + 3;"
   doMain =<< execParser opts
     where
       opts = info (parser <**> helper)
