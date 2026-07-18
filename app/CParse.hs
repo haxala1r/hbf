@@ -40,6 +40,8 @@ data CExpr
   | Add CExpr CExpr
   | Sub CExpr CExpr
   | Multiply CExpr CExpr
+  | Eq CExpr CExpr
+  | LessThan CExpr CExpr
   deriving (Show)
 
 -- |
@@ -134,6 +136,10 @@ mkSingle c = Parser f
       | otherwise = Nothing
     f [] = Nothing
 
+mkSymbol :: String -> Parser String
+mkSymbol [] = Parser $ \s -> pure ([], s)
+mkSymbol (c : cs) = (:) <$> mkSingle c <*> mkSymbol cs 
+
 mkValidCharParser :: [Char] -> Parser Char
 mkValidCharParser cs = Parser f
   where
@@ -167,37 +173,27 @@ symbol :: Parser String
 symbol = whitespace *> some (mkValidCharParser "abcdefghijklmnopqrstuwxvyzABCDEFGHIJKLMNOPQRSTUWXVYZ0123456789_")
 
 symbolExpr :: Parser CExpr
-symbolExpr = Parser $ \s -> do
-  (n, s') <- runParser symbol s
-  pure (Symbol n, s')
+symbolExpr = Symbol <$> symbol
 
 intExpr :: Parser CExpr
 intExpr = IntLiteral <$> (whitespace *> intLiteral)
 
+ccmp :: Parser CExpr
+ccmp =
+  (Eq <$> cadd <* whitespace <* mkSymbol "==" <*> cadd) <|>
+  (LessThan <$> cadd <* whitespace <* mkSingle '<' <*> cadd) <|>
+  cadd
+
 cadd :: Parser CExpr
 cadd =
-  ( Add
-      <$> cmul
-      <* whitespace
-      <* mkSingle '+'
-      <*> cmul
-  )
-    <|> ( Sub
-            <$> cmul
-            <* whitespace
-            <* mkSingle '-'
-            <*> cmul
-        )
-    <|> cmul
+  (Add <$> cmul <* whitespace <* mkSingle '+' <*> cmul)
+  <|> (Sub <$> cmul <* whitespace <* mkSingle '-' <*> cmul)
+  <|> cmul
 
 cmul :: Parser CExpr
 cmul =
-  ( Multiply
-      <$> cfactor
-      <* whitespace
-      <* mkSingle '*'
-      <*> cfactor
-  )
+  ( Multiply <$> cfactor <* whitespace <* mkSingle '*'
+      <*> cfactor)
     <|> cfactor
 
 cfactor :: Parser CExpr
@@ -210,7 +206,7 @@ cfactor =
     close = mkSingle ')'
 
 cexpr :: Parser CExpr
-cexpr = whitespace *> cadd
+cexpr = whitespace *> ccmp
 
 cAssignRight :: Parser CExpr
 cAssignRight = whitespace *> mkSingle '=' *> cexpr
@@ -242,12 +238,18 @@ funDef = CFnDecl <$> (CType <$> symbol)
 exprStmt :: Parser CStmt
 exprStmt = ExprStmt <$> cexpr
 
+whileStmt :: Parser CStmt
+whileStmt = mkSymbol "while" *> whitespace *> mkSingle '(' *>
+  (WhileLoop <$> cexpr <* mkSingle ')' <*>
+    (whitespace *> mkSingle '{' *>
+      many stmt <* whitespace <* mkSingle '}'))
+
 assignStmt :: Parser CStmt
 assignStmt = Assign <$> symbol <*> cAssignRight
 
 -- parses a single C statement
 stmt :: Parser CStmt
-stmt = (assignStmt <|> exprStmt) <* mkSingle ';'
+stmt = (whileStmt <|> assignStmt <|> exprStmt) <* mkSingle ';'
 
 cparser :: Parser CProgram
 cparser = CProgram <$> many (varDecl <* whitespace) <*> many funDef
