@@ -64,7 +64,7 @@ main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
   print $ cparse "int x = 5;"
-  print $ cparse "int y = 1 * 2 + 3;"
+  print $ cparse "int y = 1 * 2 + 3 * 4;"
   doMain =<< execParser opts
     where
       opts = info (parser <**> helper)

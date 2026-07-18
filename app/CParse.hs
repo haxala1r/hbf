@@ -250,7 +250,7 @@ stmt :: Parser CStmt
 stmt = (assignStmt <|> exprStmt) <* mkSingle ';'
 
 cparser :: Parser CProgram
-cparser = CProgram <$> many (varDecl <* whitespace <* mkSingle ';') <*> some funDef
+cparser = CProgram <$> many (varDecl <* whitespace) <*> many funDef
 
 cparse :: String -> Maybe CProgram
 cparse = (fmap fst) . runParser cparser
