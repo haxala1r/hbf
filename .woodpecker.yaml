@@ -1,0 +1,6 @@
+steps:
+  - name: test build on nix
+    image: nixos/nix
+    commands:
+      - echo "experimental-features = nix-command flakes" >> /etc/nix/nix.conf
+      - nix build
