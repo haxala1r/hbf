@@ -20,7 +20,7 @@ import Control.Applicative
 data CProgram = CProgram [CVarDecl] [CFnDecl]
   deriving (Show)
 
-data CType = CType String
+data CType = CInt8
   deriving (Show)
 
 {-
@@ -212,7 +212,7 @@ cAssignRight :: Parser CExpr
 cAssignRight = whitespace *> mkSingle '=' *> cexpr
 
 ctype :: Parser CType
-ctype = CType <$> symbol
+ctype = mkSymbol "int8_t" *> pure CInt8
 
 
 -- Parses a variable declaration/definition.
@@ -226,11 +226,11 @@ funArgList :: Parser [(CType, String)]
 funArgList = ((:) <$> one <*> (mkSingle ',' *> funArgList))
   <|> pure []
   where
-    one = (,) <$> (CType <$> symbol) <*> symbol
+    one = (,) <$> ctype <*> symbol
 
 -- Parses a function definition.
 funDef :: Parser CFnDecl
-funDef = CFnDecl <$> (CType <$> symbol)
+funDef = CFnDecl <$> ctype
   <*> symbol
   <*> (mkSingle '(' *> funArgList <* mkSingle ')')
   <*> (whitespace *> mkSingle '{' *> many varDecl)
