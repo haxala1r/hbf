@@ -6,6 +6,7 @@ import System.IO
 import CBackend
 import Options.Applicative
 import CParse (cparse)
+import CToBF (compileC2BF)
 
 exec :: (Char -> IO ()) -> [Instr] -> IO ()
 exec f is = do
@@ -63,11 +64,11 @@ doMain opts = do
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
-  print $ cparse "int x = 5;"
-  print $ cparse "int y = 1 * 2 + 3 * 4;"
-  doMain =<< execParser opts
-    where
-      opts = info (parser <**> helper)
-        (fullDesc
-        <> progDesc "Interpret Brainfuck, or compile BF to C"
-        <> header "Interpreter/Compiler for Brainfuck")
+  
+  print $ (CParse.cparse "int8_t x = 5;" >>= (Just . CToBF.compileC2BF))
+  -- doMain =<< execParser opts
+  --   where
+  --     opts = info (parser <**> helper)
+  --       (fullDesc
+  --       <> progDesc "Interpret Brainfuck, or compile BF to C"
+  --       <> header "Interpreter/Compiler for Brainfuck")
