@@ -2,7 +2,6 @@ module CToBF where
 
 import CParse
 import Control.Arrow ((>>>))
-import Debug.Trace
 
 data Instr =
   Inc
@@ -51,7 +50,7 @@ data Layout = Layout {
 mkLayout :: CProgram -> Layout
 mkLayout (CProgram vs fs) = go vs (Layout {program = CProgram vs fs, vars = [], end = 0, initCode = []})
   where
-    go [] l = l
+    go [] l = l {vars = reverse $ vars l, initCode = reverse $ initCode l}
     go (v : vs') l = go vs' $ allocateVar v l
 
 getSize :: CType -> Int
@@ -84,9 +83,9 @@ findFn name (CProgram _ fs) = go fs
       else go fs'
 
 findVar :: String -> Layout -> Maybe Int
-findVar s l = traceShow l $ f (vars l)
+findVar s l = f (vars l)
   where
-    f [] = trace "heckington the first" Nothing
+    f [] = Nothing
     f ((n, i) : _) | n == s = Just i
     f ((_, _) : rest) | otherwise = f rest
 
@@ -139,8 +138,8 @@ goRight i = (take i $ repeat NextData)
 
 goTo :: Int -> Int -> [Instr]
 goTo from x = if from < x
-  then goLeft (x - from)
-  else goRight (from - x)
+  then goRight (x - from)
+  else goLeft (from - x)
 
 goTo_ :: Int -> Program -> Program
 goTo_ x p = p {
@@ -182,9 +181,7 @@ compileExpr _ (FunCall _ _) _ = undefined
 {- -}
 compileExpr target (Add e1 e2) p =
   let (scratch, p') = getScratch1 p in
-  (goAndReset target >>>
-  goAndReset scratch >>>
-  compileExpr target e1 >>>
+  (compileExpr target e1 >>>
   compileExpr scratch e2 >>>
   goTo_ scratch >>>
   addCode ([BeginLoop, Dec] ++ goTo scratch target ++ [Inc] ++ goTo target scratch ++ [EndLoop]))
@@ -192,8 +189,8 @@ compileExpr target (Add e1 e2) p =
 
 compileExpr target (Sub e1 e2) p =
   let (scratch, p') = getScratch1 p in
-  (goAndReset target >>>
-  goAndReset scratch >>>
+  (-- goAndReset target >>>
+  -- goAndReset scratch >>>
   compileExpr target e1 >>>
   compileExpr scratch e2 >>>
   goTo_ scratch >>>
@@ -202,12 +199,10 @@ compileExpr target (Sub e1 e2) p =
 
 compileExpr _ (Multiply _ _) _ = undefined
 
-compileExpr _ (Eq _ _) _ = undefined
+compileExpr target (Eq e1 e2) p = compileExpr target (Sub e1 e2) p
 compileExpr _ (LessThan _ _) _ = undefined
 
 
--- TODO: complete this bro.
--- it's gonna be glorious bro. just trust me on this one
 compileStmt :: CStmt -> Program -> Program
 compileStmt (ExprStmt e) p =
   let (scratch, p') = getScratch1 p in

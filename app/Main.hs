@@ -65,7 +65,7 @@ main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
   
-  print $ (CParse.cparse "int8_t x = 5;" >>= (Just . CToBF.compileC2BF))
+  print $ (CParse.cparse "int8_t x = 5; int8_t y = 5 + 5; int8_t z = 5 - 2;" >>= (Just . CToBF.compileC2BF))
   -- doMain =<< execParser opts
   --   where
   --     opts = info (parser <**> helper)
