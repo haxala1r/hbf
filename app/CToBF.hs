@@ -104,12 +104,13 @@ our variables.
 data Program = Program {
   layout :: Layout,
   cursor :: Int,
-  code :: [Instr]
+  code :: [Instr],
+  returnTarget :: Int
 }
   deriving Show
 
 mkProgram :: CProgram -> Program
-mkProgram c = Program {layout = mkLayout c, cursor = 0, code = []}
+mkProgram c = Program {layout = mkLayout c, cursor = 0, code = [], returnTarget = -1}
 
 addCode :: [Instr] -> Program -> Program
 addCode is p =
@@ -176,7 +177,23 @@ compileExpr target (IntLiteral i) p =
   addCode (take i $ repeat Inc) p'
 
 compileExpr _ (StringLiteral _) _ = undefined
-compileExpr _ (FunCall _ _) _ = undefined
+compileExpr target (FunCall name argExprs) p =
+-- TODO: currently ignores variables in function body. fix!
+  let (CFnDecl _ _ args _ body) = findFn name $ program $ layout p in
+  let (argCells, p') = (
+        foldl
+          (\(acc, q) s ->
+            ((s, end $ layout $ q) : acc,
+              q {layout = (layout q) {end = (end $ layout q) + 1}}))
+          ([], p) (map snd args)) in
+  let p'' = p' {layout = (layout p') {vars = argCells ++ (vars $ layout p')}, returnTarget = target} in
+  ((\q -> foldl (\q' (i, e) -> compileExpr i e q') q (zip (map snd argCells) argExprs)) >>>
+  (\q -> foldl (\q' s -> compileStmt s q') q body) >>>
+  -- make the arguments inaccessible
+  (\q -> q {layout = (layout q) {vars = vars $ layout p'}, returnTarget = returnTarget p'})) 
+   p''
+    
+
 
 {- -}
 compileExpr target (Add e1 e2) p =
@@ -230,6 +247,11 @@ compileStmt (Assign s e) p =
   Nothing -> error ("can't find symbol: " ++ s)
   Just i -> compileExpr i e p
 
+compileStmt (Return e) p =
+  if returnTarget p == -1 then
+    compileExpr 0 e p
+  else compileExpr (returnTarget p) e p
+
 compileStmt (WhileLoop cond body) p =
   let (scratch, p') = getScratch1 p in
   (goAndReset scratch >>>
@@ -247,6 +269,8 @@ compileStmt (WhileLoop cond body) p =
 compileC2BF :: CProgram -> Program
 compileC2BF c =
   let p = mkProgram c in
-  let i = initCode $ layout $ p in
-  foldl' (\a b -> compileStmt b a) p i
-
+  let (mainRet, p') = getScratch1 p in
+  let i = initCode $ layout $ p' in
+  ((\q -> foldl' (\a b -> compileStmt b a) q i) >>>
+  compileStmt (ExprStmt (FunCall "main" [])) ) 
+  (p' {returnTarget = mainRet})

@@ -231,7 +231,7 @@ funArgList = ((:) <$> one <*> (mkSingle ',' *> funArgList))
 
 -- Parses a function definition.
 funDef :: Parser CFnDecl
-funDef = CFnDecl <$> ctype
+funDef = CFnDecl <$> (whitespace *> ctype)
   <*> symbol
   <*> (mkSingle '(' *> funArgList <* mkSingle ')')
   <*> (whitespace *> mkSingle '{' *> many varDecl)
@@ -249,7 +249,7 @@ assignStmt :: Parser CStmt
 assignStmt = Assign <$> symbol <*> cAssignRight
 
 retStmt :: Parser CStmt
-retStmt = mkSymbol "return" *> (Return <$> cexpr) <* mkSingle ';'
+retStmt = whitespace *> mkSymbol "return" *> (Return <$> cexpr)
 
 -- parses a single C statement
 stmt :: Parser CStmt
