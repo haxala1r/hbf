@@ -36,7 +36,7 @@ data CExpr
   = Symbol String
   | IntLiteral Int
   | StringLiteral String
-  | FunCall CExpr [CExpr]
+  | FunCall String [CExpr]
   | Add CExpr CExpr
   | Sub CExpr CExpr
   | Multiply CExpr CExpr
@@ -50,6 +50,7 @@ data CExpr
 data CStmt
   = ExprStmt CExpr
   | Assign String CExpr
+  | Return CExpr
   | WhileLoop CExpr [CStmt]
   deriving (Show)
 
@@ -247,9 +248,12 @@ whileStmt = mkSymbol "while" *> whitespace *> mkSingle '(' *>
 assignStmt :: Parser CStmt
 assignStmt = Assign <$> symbol <*> cAssignRight
 
+retStmt :: Parser CStmt
+retStmt = mkSymbol "return" *> (Return <$> cexpr) <* mkSingle ';'
+
 -- parses a single C statement
 stmt :: Parser CStmt
-stmt = (whileStmt <|> assignStmt <|> exprStmt) <* mkSingle ';'
+stmt = (whileStmt <|> retStmt <|> assignStmt <|> exprStmt) <* mkSingle ';'
 
 cparser :: Parser CProgram
 cparser = CProgram <$> many (varDecl <* whitespace) <*> many funDef
