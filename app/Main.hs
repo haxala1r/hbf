@@ -63,7 +63,6 @@ doMain opts = do
 
 testCode :: String
 testCode = unlines [
-  "int8_t f() {return 5;}",
   "int8_t main() {return 1+1;}"
   ]
 
