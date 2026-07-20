@@ -197,7 +197,24 @@ compileExpr target (Sub e1 e2) p =
   addCode ([BeginLoop, Dec] ++ goTo scratch target ++ [Dec] ++ goTo target scratch ++ [EndLoop]))
   p'
 
-compileExpr _ (Multiply _ _) _ = undefined
+compileExpr target (Multiply e1 e2) p =
+  let (scratch1, p') = getScratch1 p in
+  let (scratch2, p'') = getScratch1 p' in
+  let (scratch3, p''') = getScratch1 p'' in
+  (
+    goAndReset target >>>
+    goAndReset scratch3 >>>
+    compileExpr scratch1 e1 >>>
+    compileExpr scratch2 e2 >>>
+    goTo_ scratch2 >>>
+    addCode ([BeginLoop, Dec] ++ goTo scratch2 scratch1 ++
+      ([BeginLoop, Dec] ++ goTo scratch1 target ++ [Inc]
+        ++ goTo target scratch3 ++ [Inc] ++ goTo scratch3 scratch1 ++ [EndLoop])
+      ++ goTo scratch1 scratch3 ++ -- copy result of e1 back.
+      ([BeginLoop, Dec] ++ goTo scratch3 scratch1 ++ [Inc] ++ goTo scratch1 scratch3 ++ [EndLoop])
+      ++ goTo scratch3 scratch2
+      ++ [EndLoop])
+  ) p'''
 
 compileExpr target (Eq e1 e2) p = compileExpr target (Sub e1 e2) p
 compileExpr _ (LessThan _ _) _ = undefined
